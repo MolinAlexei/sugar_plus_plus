@@ -40,6 +40,8 @@ class hubble_diagram(object):
 
     def __init__(self, mb, data, cov, zcmb, dmz):
 
+        print "JE SUIS UNE CLASS PYTHON"
+
         self.mb = mb 
         self.data = data
         self.cov = cov
