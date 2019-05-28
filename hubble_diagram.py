@@ -12,7 +12,7 @@ import matplotlib.gridspec as gridspec
 import copy
 
 def load_salt2(File):
-    #File = os.path.join('data complete/', File)
+
     dic = pickle.load(open(File))
 
     X1 = np.array([dic[sn]['salt2_info']['X1'] for sn in dic])
@@ -36,21 +36,17 @@ def load_salt2(File):
                            [delta_mu_C_cov[k], X1_C_cov[k], C_err[k]**2]])
     return mb, params, cov ,zcmb, dmz
 
+
 class hubble_diagram(object):
 
     def __init__(self, mb, data, cov, zcmb, dmz):
 
-        print "JE SUIS UNE CLASS PYTHON"
 
         self.mb = mb 
         self.data = data
         self.cov = cov
         self.zcmb = zcmb
         self.dmz = dmz
-       # self.global_mass = global_mass
-       # self.lssfr = lssfr
-       # self.p_hightmass = p_hightmass
-       # self.p_prompt = p_prompt
 
         self.ntheta = len(self.data[0]) + 1
         self.theta = np.ones(self.ntheta)
@@ -103,8 +99,6 @@ class hubble_diagram(object):
 
             self.theta = optimize.fmin(self.comp_chi2, p0)
             c = (self.comp_chi2(self.theta) / self.dof) - 1.
-            #if c2 == c:
-             #   break
             
             count += 1
             if count > 10:
@@ -114,6 +108,7 @@ class hubble_diagram(object):
         self.results = c, self.sigma_int, self.theta
         print(c)
         print(self.theta)
+
 
     def plot_results(self, param_name):
 
@@ -144,14 +139,6 @@ class hubble_diagram(object):
             plt.ylabel('$m_B - 5 \t \log_{10} d_l$')
             plt.legend(('fit $q_%i \t $%s$ + M_B$ '%(k,param_name[k]), 'Ajusted $m_B$'))
             plt.show()
-
-          #  if self.global_mass[0] != None:
-          #      plt.scatter(self.global_mass, self.data[:,k])
-          #      plt.title('Parameter %s as a function of host galaxy mass'%(param_name[k]))
-          #      plt.grid()
-          #      plt.xlabel('$\log_{10} \f{M_galaxy}{M_solar}$')
-          #      plt.ylabel('Parameter %s'%(param_name[k]))
-          #      plt.show()
 
 
         z_span = np.linspace(1E-2,0.15,100)
@@ -201,12 +188,9 @@ class hubble_diagram(object):
 
         
     
-                   
-
-
 if __name__ == "__main__":
-    #donnees = load_salt2('sugar_companion_dataset.pkl')
-    mb, data, cov, zcmb, dmz= load_salt2('data_complete/sugar_companion_dataset.pkl') 
+
+    mb, data, cov, zcmb, dmz= load_salt2('../snfactory/data_complete/sugar_companion_dataset.pkl') 
     hd = hubble_diagram(mb, data, cov, zcmb, dmz)
     hd.plot_results(['$X_1$', '$C$'])
 
