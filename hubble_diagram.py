@@ -14,7 +14,7 @@ import copy
 def load_salt2(File, File_host):
 
     table_host = np.loadtxt(File_host, comments='#', delimiter=',', dtype='str',skiprows=1)
-    
+
     sn_name_host =  table_host[:,16]
 
     dic = pickle.load(open(File))
@@ -25,7 +25,7 @@ def load_salt2(File, File_host):
     for sn in sn_name_host:
         if sn in sn_name_dic:
             sn_name.append(sn)
-    
+
 
     X1 = np.array([dic[sn]['salt2_info']['X1'] for sn in sn_name])
     C = np.array([dic[sn]['salt2_info']['C'] for sn in sn_name])
@@ -39,13 +39,14 @@ def load_salt2(File, File_host):
     dmz = np.array([dic[sn]['salt2_info']['dmz'] for sn in sn_name])
     zcmb = np.array([dic[sn]['salt2_info']['zcmb'] for sn in sn_name])
 
-    
-    cov = np.zeros((len(X1), 3,3))
+
+    cov = np.zeros((len(X1), 4, 4))
 
     for k in range(len(X1)):
-        cov[k] = np.array([[delta_mu_err[k]**2, delta_mu_X1_cov[k], delta_mu_C_cov[k]],
-                           [delta_mu_X1_cov[k], X1_err[k]**2,  X1_C_cov[k]],
-                           [delta_mu_C_cov[k], X1_C_cov[k], C_err[k]**2]])
+        cov[k] = np.array([[delta_mu_err[k]**2, delta_mu_X1_cov[k], delta_mu_C_cov[k], 0.],
+                           [delta_mu_X1_cov[k], X1_err[k]**2,  X1_C_cov[k], 0.],
+                           [delta_mu_C_cov[k], X1_C_cov[k], C_err[k]**2, 0.],
+                           [0., 0., 0., 0.] ])
     
 
     global_mass = np.zeros_like(X1)
@@ -62,7 +63,7 @@ def load_salt2(File, File_host):
             p_prompt[count] = table_host[k,18].astype(float)
             count += 1
 
-    params = np.array([X1,C]).T
+    params = np.array([X1,C,p_hightmass]).T
 
     return mb, params, cov ,zcmb, dmz, global_mass, lssfr, p_hightmass, p_prompt
 
@@ -123,6 +124,7 @@ class hubble_diagram(object):
         p0 = np.ones(self.ntheta)
         p0[-1] = -19.2
         
+        
         self.theta = optimize.fmin(self.comp_chi2, p0)
         c = (self.comp_chi2(self.theta) / self.dof) - 1
         count = 0
@@ -163,34 +165,49 @@ class hubble_diagram(object):
                     mb_reduit_k -= self.theta[i]*self.data[:,i]
                 
             plt.figure(k)
-            plt.scatter(self.data[:,k], mb_reduit_k, color='r', marker ='+', s = 20,linewidth=1)
+            plt.scatter(self.data[:,k], mb_reduit_k, color='r', marker ='o', s = 20,linewidth=1)
             
             fit_mb_k=self.theta[k]*self.data[:,k]+self.theta[-1]
             plt.plot(self.data[:,k],fit_mb_k,color='b')
             
             plt.title('$m_B$ as a function of parameter %s'%(param_name[k]))
+            plt.errorbar(self.data[:,k], mb_reduit_k, linestyle='',
+			            yerr=np.sqrt(self.var), xerr=None,
+			            ecolor='grey', 
+			            alpha=0.9, marker='.', 
+			            zorder=0)
             plt.grid()
-            plt.xlabel('Parameter %s'%(param_name[k]))
-            plt.ylabel('$m_B - 5 \t \log_{10} d_l$')
+            plt.xlabel('Parameter %s'%(param_name[k]), fontsize = 12)
+            plt.ylabel('$m_B - 5 \t \log_{10} d_l$', fontsize = 12)
             plt.legend(('fit $q_%i \t $%s$ + M_B$ '%(k,param_name[k]), 'Ajusted $m_B$'))
             plt.show()
             
             if self.global_mass[0] != None:
-                plt.scatter(self.global_mass, self.data[:,k], c=self.p_hightmass, cmap = 'bwr')
+                plt.scatter(self.global_mass, self.data[:,k], c=self.p_hightmass, cmap = 'bwr', marker ='o', s = 20,linewidth=1) 
+                plt.errorbar(self.global_mass, self.data[:,k], linestyle='',
+			                yerr = np.sqrt(self.cov[:,k+1,k+1]), xerr=None,
+			                ecolor='grey', 
+			                alpha=0.9, marker='.', 
+			                zorder=0)
                 plt.title('Parameter %s as a function of host galaxy mass'%(param_name[k]))
                 plt.grid()
-                plt.xlabel('$\log_{10} \\frac{M_{galaxy}}{M_{\odot}}$', fontsize=14)
-                plt.ylabel('Parameter %s'%(param_name[k]))
+                plt.xlabel('$\log_{10} \\frac{M_{galaxy}}{M_{\odot}}$', fontsize=12)
+                plt.ylabel('Parameter %s'%(param_name[k]), fontsize = 12)
                 cb = plt.colorbar()
                 cb.set_label('Probability of having this mass')
                 plt.show()
 
             if self.lssfr[0] != None:
-                plt.scatter(self.lssfr, self.data[:,k], c=self.p_hightmass, cmap = 'bwr')
+                plt.scatter(self.lssfr, self.data[:,k], c=self.p_prompt, cmap = 'bwr', marker ='o', s = 20,linewidth=1)
+                plt.errorbar(self.lssfr, self.data[:,k], linestyle='',
+			                yerr = np.sqrt(self.cov[:,k+1,k+1]), xerr=None,
+			                ecolor='grey', 
+			                alpha=0.9, marker='.', 
+			                zorder=0)
                 plt.title('Parameter %s as a function of local specific star formation rate'%(param_name[k]))
                 plt.grid()
-                plt.xlabel('Local sSFR', fontsize = 14)
-                plt.ylabel('Parameter %s'%(param_name[k]), fontsize = 14)
+                plt.xlabel('Local sSFR', fontsize = 12)
+                plt.ylabel('Parameter %s'%(param_name[k]), fontsize = 12)
                 cb = plt.colorbar()
                 cb.set_label('Probability of having this local sSFR')
                 plt.show()
@@ -205,7 +222,7 @@ class hubble_diagram(object):
         plt.subplot(gs[0])
         plt.title('SALT2 Hubble Diagram')
         plt.scatter(self.zcmb,mu, marker ='+', s=20, linewidth=1, color='r')
-        plt.scatter(self.zcmb,mu_ajuste, marker ='+', s = 20,linewidth=1,  color = 'b')
+        plt.scatter(self.zcmb,mu_ajuste, marker ='+', s = 20, linewidth=1,  color = 'b')
         plt.plot(z_span,mu_th, linewidth=1, color = 'g')
         plt.errorbar(self.zcmb, mu_ajuste, linestyle='',
 			        yerr=np.sqrt(self.var), xerr=None,
@@ -217,7 +234,7 @@ class hubble_diagram(object):
         plt.legend(('Theoric $\mu$','$\mu =  m_B - M_B$',
                     '$\mu = m_B - M_B + \\alpha \t X_1 -\\beta \t C $'))
         plt.xticks([],[])
-        plt.ylabel('Distance modulus $\mu$')
+        plt.ylabel('Distance modulus $\mu$', fontsize = 12)
 
 
         plt.subplot(gs[1])
@@ -233,29 +250,62 @@ class hubble_diagram(object):
         plt.xscale('log')  
         plt.legend()
         plt.xlim([1E-2,0.15])
-        plt.xlabel('Redshift')
-        plt.ylabel('Residuals $\Delta \mu$')
+        plt.xlabel('Redshift', fontsize = 12)
+        plt.ylabel('Residuals $\Delta \mu$', fontsize = 12)
     
 
         plt.subplots_adjust(hspace=0)
         plt.show()
 
         if self.global_mass[0] != None:
-            plt.scatter(self.global_mass, self.residuals, c=self.p_hightmass, cmap = 'bwr')
-            plt.title('Hubble diagram residuals as a function of host galaxy mass')
+            gs=gridspec.GridSpec(1,2, width_ratios=[1,1])
+            
+            mu_no_masstep = self.residuals + self.theta[-2]*self.p_hightmass 
+
+
+            plt.subplot(gs[0])
+            plt.scatter(self.global_mass, self.residuals, c=self.p_hightmass, cmap = 'bwr', marker ='o', s = 20,linewidth=1)
+            plt.title('Hubble diagram residuals with no mass step')
+            plt.errorbar(self.global_mass, self.residuals, linestyle='',
+			            yerr=np.sqrt(self.var), xerr=None,
+			            ecolor='grey', 
+			            alpha=0.9, marker='.', 
+			            zorder=0)
             plt.grid()
-            plt.xlabel('$\log_{10} \\frac{M_{galaxy}}{M_{\odot}}$', fontsize = 14)
-            plt.ylabel('$\Delta \mu$', fontsize = 14)
+            plt.ylim([-0.6, 0.4])
+            plt.xlabel('$\log_{10} \\frac{M_{galaxy}}{M_{\odot}}$', fontsize = 12)
+            plt.ylabel('$\Delta \mu$', fontsize = 12)
+            
+            
+            plt.subplot(gs[1])
+            plt.scatter(self.global_mass, mu_no_masstep, c=self.p_hightmass, cmap = 'bwr', marker ='o', s = 20,linewidth=1)
+            plt.title('Hubble diagram residuals with mass step')
+            plt.errorbar(self.global_mass, mu_no_masstep, linestyle='',
+			            yerr=np.sqrt(self.var), xerr=None,
+			            ecolor='grey', 
+			            alpha=0.9, marker='.', 
+			            zorder=0)
+            plt.grid()
+            plt.ylim([-0.6, 0.4])
+            plt.yticks([-0.6, -0.4, -0.2, 0., 0.2, 0.4],[])
+            plt.xlabel('$\log_{10} \\frac{M_{galaxy}}{M_{\odot}}$', fontsize = 12)
             cb = plt.colorbar()
             cb.set_label('Probability of having this mass')
+            
+            plt.subplots_adjust(wspace=0)
             plt.show()
 
         if self.lssfr[0] != None:
-            plt.scatter(self.lssfr, self.data[:,k], c=self.p_hightmass, cmap = 'bwr')
+            plt.scatter(self.lssfr, self.residuals, c=self.p_prompt, cmap = 'bwr', marker ='o', s = 20,linewidth=1)
+            plt.errorbar(self.lssfr, self.residuals, linestyle='',
+			            yerr=np.sqrt(self.var), xerr=None,
+			            ecolor='grey', 
+			            alpha=0.9, marker='.', 
+			            zorder=0)
             plt.title('Hubble diagram residuals as a function of local specific star formation rate')
             plt.grid()
-            plt.xlabel('Local sSFR', fontsize = 14)
-            plt.ylabel('$\Delta \mu$', fontsize = 14)
+            plt.xlabel('Local sSFR', fontsize = 12)
+            plt.ylabel('$\Delta \mu$', fontsize = 12)  
             cb = plt.colorbar()
             cb.set_label('Probability of having this local sSFR')
             plt.show()
@@ -266,13 +316,7 @@ if __name__ == "__main__":
     file_host = '../snfactory/lssfr_paper_full_sntable.csv'
     mb, data, cov, zcmb, dmz, global_mass, lssfr, p_hightmass, p_prompt= load_salt2('../snfactory/data_complete/sugar_companion_dataset.pkl', file_host) 
     hd = hubble_diagram(mb, data, cov, zcmb, dmz, global_mass, lssfr, p_hightmass, p_prompt)
-    hd.plot_results(['$X_1$', '$C$'])
+    hd.plot_results(['$X_1$', '$C$', 'Probability of having this mass'])
 
     
 
-
-
-
-
-
-    
