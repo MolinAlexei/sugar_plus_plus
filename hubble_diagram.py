@@ -8,6 +8,8 @@ import pickle
 from mpl_toolkits.mplot3d import Axes3D
 from scipy import optimize
 from toolbox import distance_modulus
+from toolbox import weighted_avg_and_std
+
 import matplotlib.gridspec as gridspec
 import copy
 
@@ -232,15 +234,16 @@ class hubble_diagram(object):
         plt.xscale('log')
         plt.xlim([1E-2,0.15])
         plt.legend(('Theoric $\mu$','$\mu =  m_B - M_B$',
-                    '$\mu = m_B - M_B + \\alpha \t X_1 -\\beta \t C $'))
+                    '$\mu = m_B - M_B + \\alpha \t X_1 -\\beta \t C  -\Delta M \t p$'))
         plt.xticks([],[])
         plt.ylabel('Distance modulus $\mu$', fontsize = 12)
 
 
         plt.subplot(gs[1])
+        weighted_std = weighted_avg_and_std(self.residuals, np.sqrt(self.var))
         plt.scatter(self.zcmb, self.residuals, 
                     marker ='+', s = 20, 
-                    linewidth=1, color = 'b', label = 'RMS = %.3f mag'%(np.std(self.residuals)))
+                    linewidth=1, color = 'b', label = 'wRMS = %.3f mag'%(weighted_std))
         plt.errorbar(self.zcmb, self.residuals, linestyle='',
 			        yerr=np.sqrt(self.var), xerr=None,
 			        ecolor='grey', 
