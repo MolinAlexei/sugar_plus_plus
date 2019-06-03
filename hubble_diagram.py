@@ -174,16 +174,19 @@ class hubble_diagram(object):
         self.theta = np.ones(self.ntheta)
         self.nsn = len(self.mb)
         self.dof = self.nsn - self.ntheta
-        self.sigma_int = 0.   
+        self.sigma_int = 0.1  
     
-    def comp_chi2(self, theta):
+    def comp_chi2(self, theta, sigma_int):
 
         residuals = copy.deepcopy(self.mb) - distance_modulus(self.zcmb)
         
-        for i in range(len(self.data[0])):
+        for i in range(len(self.data[0])):            
             residuals -= self.data[:,i] * theta[i]
+        
         if self.p_host is not None:
-           residuals -= self.p_host[0] * theta[-2]
+           
+           residuals -= self.p_host[0]* theta[-2]
+           
 
         residuals -= theta[-1]
 
@@ -195,7 +198,7 @@ class hubble_diagram(object):
         vec_theta = np.array(vec_theta)
         for sn in range(self.nsn):
             
-            var[sn] = np.dot(np.dot(vec_theta,self.cov[sn]), vec_theta.reshape((len(vec_theta),1))) + self.sigma_int**2 + self.dmz[sn]**2 
+            var[sn] = np.dot(np.dot(vec_theta,self.cov[sn]), vec_theta.reshape((len(vec_theta),1))) + sigma_int**2 + self.dmz[sn]**2 
 #On a retire sigma_b = 0.03
 
         self.residuals = residuals
@@ -206,39 +209,43 @@ class hubble_diagram(object):
 
     def chi2_dof(self, sigma_int):
         self.sigma_int = sigma_int
-        chi2 = self.comp_chi2(self.theta)
+        chi2 = self.comp_chi2(self.theta, self.sigma_int)
+        
         return (chi2/self.dof) - 1             
 
     def minimize(self):
 
         p0 = np.zeros(self.ntheta)
         p0[-1] = -19.2
+        
 
-        self.theta = optimize.fmin(self.comp_chi2, p0)
+        fct_chi2 = lambda theta : self.comp_chi2(theta, self.sigma_int)
+        self.theta = optimize.fmin(fct_chi2, p0)
         c = self.chi2_dof(self.sigma_int)
-        count = 0
-        print('before iteration', c+1)
-        print(c)
-       # while c>1E-2:
-        #    print('during_iteration', c+1)
-
-#            self.sigma_int = optimize.fsolve(self.chi2_dof, 0.1)
-
- #           self.theta = optimize.fmin(self.comp_chi2, p0)
-  #          c = (self.comp_chi2(self.theta) / self.dof) - 1.
+        print('premier c', c) 
+        count = 0  
+        
+        while abs(c) > 1E-2:
             
-   #         count += 1
-    #        if count > 10:
-     #           break
+            fct_sigma = lambda  sigma_int: (self.comp_chi2(self.theta, sigma_int)/ self.dof) -1.
+            self.sigma_int = optimize.fsolve(fct_sigma, self.sigma_int)
             
+            
+            fct_chi2 = lambda theta : self.comp_chi2(theta, self.sigma_int)
+            self.theta = optimize.fmin(fct_chi2, p0)
 
-        self.results = c, self.sigma_int, self.theta
-        print(c)
+            c = self.chi2_dof(self.sigma_int)
+            
+            count += 1
+            if count > 10:
+                break
+            
+        print(c)        
         print(self.sigma_int)
         print(self.theta)
 
 
-    def plot_results(self, param_name, model='SALT2', host_properties='$\log(M/M_{\odot})$'):
+    def plot_results(self, param_name):
 
         self.minimize()
         mu = copy.deepcopy(self.mb)
@@ -250,15 +257,18 @@ class hubble_diagram(object):
             mu_ajuste -= self.theta[k]*self.data[:,k]
             
             mb_reduit_k = copy.deepcopy(self.mb) - distance_modulus(self.zcmb)
+            mb_reduit_k -= self.theta[-2]*self.p_host[0]
             
             for i in range(len(self.data[0])):
+                
                 if i!=k :
                     mb_reduit_k -= self.theta[i]*self.data[:,i]
+                    
                 
             plt.figure(k)
             plt.scatter(self.data[:,k], mb_reduit_k, color='r', marker ='o', s = 20,linewidth=1)
             
-            fit_mb_k=self.theta[k]*self.data[:,k]+self.theta[-1]
+            fit_mb_k = self.theta[k]*self.data[:,k] + self.theta[-1]
             plt.plot(self.data[:,k],fit_mb_k,color='b')
             
             plt.title('$m_B$ as a function of parameter %s'%(param_name[k]))
@@ -275,12 +285,12 @@ class hubble_diagram(object):
             
             if self.p_host is not None:
                 plt.scatter(self.host_prop[0], self.data[:,k], c=self.p_host[0], cmap = 'bwr', marker ='o', s = 20,linewidth=1) 
-                plt.errorbar(self.host_prop[0], self.data[:,k], linestyle='',                            
-			                yerr = np.sqrt(self.cov[:,k+1,k+1]), 
-                            xerr = [self.host_prop_err_minus[0], self.host_prop_err_sup[0]],
-			                ecolor='grey', 
-			                alpha=0.4, marker='.', 
-			                zorder=0)
+                #plt.errorbar(self.host_prop[0], self.data[:,k], linestyle='',                            
+			    #            yerr = np.sqrt(self.cov[:,k+1,k+1]), 
+                #            xerr = [self.host_prop_err_minus[0], self.host_prop_err_sup[0]],
+			    #            ecolor='grey', 
+			    #            alpha=0.4, marker='.', 
+			    #            zorder=0)
                 plt.title('Parameter %s as a function of host galaxy mass'%(param_name[k]))
                 plt.grid()
                 plt.xlabel('$\log_{10} \\frac{M_{galaxy}}{M_{\odot}}$', fontsize=12)
@@ -290,20 +300,20 @@ class hubble_diagram(object):
                 plt.show()
 
             
-                plt.scatter(self.host_prop[1], self.data[:,k], c=self.p_host[1], cmap = 'bwr', marker ='o', s = 20,linewidth=1)
-                plt.errorbar(self.host_prop[1], self.data[:,k], linestyle='',
-			                yerr = np.sqrt(self.cov[:,k+1,k+1]),
-                            xerr = [self.host_prop_err_minus[1], self.host_prop_err_sup[1]],
-			                ecolor='grey', 
-			                alpha=0.4, marker='.', 
-			                zorder=0)
-                plt.title('Parameter %s as a function of local specific star formation rate'%(param_name[k]))
-                plt.grid()
-                plt.xlabel('Local sSFR', fontsize = 12)
-                plt.ylabel('Parameter %s'%(param_name[k]), fontsize = 12)
-                cb = plt.colorbar()
-                cb.set_label('Probability of having this local sSFR')
-                plt.show()
+              #  plt.scatter(self.host_prop[1], self.data[:,k], c=self.p_host[1], cmap = 'bwr', marker ='o', s = 20,linewidth=1)
+              #  plt.errorbar(self.host_prop[1], self.data[:,k], linestyle='',
+			  #              yerr = np.sqrt(self.cov[:,k+1,k+1]),
+              #              xerr = [self.host_prop_err_minus[1], self.host_prop_err_sup[1]],
+			  #              ecolor='grey', 
+			  #              alpha=0.4, marker='.', 
+			  #              zorder=0)
+              #  plt.title('Parameter %s as a function of local specific star formation rate'%(param_name[k]))
+              #  plt.grid()
+              #  plt.xlabel('Local sSFR', fontsize = 12)
+              #  plt.ylabel('Parameter %s'%(param_name[k]), fontsize = 12)
+              #  cb = plt.colorbar()
+              #  cb.set_label('Probability of having this local sSFR')
+              #  plt.show()
 
         z_span = np.linspace(1E-2,0.15,100)
         mu_th = distance_modulus(z_span)
@@ -361,12 +371,12 @@ class hubble_diagram(object):
             plt.subplot(gs[0])
             plt.scatter(self.host_prop[0], self.residuals, c=self.p_host[0], cmap = 'bwr', marker ='o', s = 20,linewidth=1)
             plt.title('Hubble diagram residuals with corrected mass step')
-            plt.errorbar(self.host_prop[0], self.residuals, linestyle='',    
-			            yerr=np.sqrt(self.var),
-                        xerr = [self.host_prop_err_minus[0], self.host_prop_err_sup[0]],
-			            ecolor='grey', 
-			            alpha=0.4, marker='.', 
-			            zorder=0)
+          #  plt.errorbar(self.host_prop[0], self.residuals, linestyle='',    
+		#	            yerr=np.sqrt(self.var),
+          #              xerr = [self.host_prop_err_minus[0], self.host_prop_err_sup[0]],
+		#	            ecolor='grey', 
+		#	            alpha=0.4, marker='.', 
+		#	            zorder=0)
             plt.grid()
             plt.ylim([-0.6, 0.4])
             plt.xlabel('$\log_{10} \\frac{M_{galaxy}}{M_{\odot}}$', fontsize = 12)
@@ -376,12 +386,12 @@ class hubble_diagram(object):
             plt.subplot(gs[1])
             plt.scatter(self.host_prop[0], mu_no_correction, c=self.p_host[0], cmap = 'bwr', marker ='o', s = 20,linewidth=1)
             plt.title('Hubble diagram residuals without corrected mass step')
-            plt.errorbar(self.host_prop[0], mu_no_correction, linestyle='',
-			            yerr=np.sqrt(self.var),
-                        xerr = [self.host_prop_err_minus[0], self.host_prop_err_sup[0]],
-			            ecolor='grey', 
-			            alpha=0.4, marker='.', 
-			            zorder=0)
+           # plt.errorbar(self.host_prop[0], mu_no_correction, linestyle='',
+		#	            yerr=np.sqrt(self.var),
+        #                xerr = [self.host_prop_err_minus[0], self.host_prop_err_sup[0]],
+		#	            ecolor='grey', 
+		#	            alpha=0.4, marker='.', 
+		#	            zorder=0)
             plt.grid()
            # plt.ylim([-0.6, 0.4])
             #plt.yticks([-0.6, -0.4, -0.2, 0., 0.2, 0.4],[])
@@ -393,41 +403,47 @@ class hubble_diagram(object):
             plt.show()
 
 #Trace de residus vs LSSFR
-            plt.scatter(self.host_prop[1], self.residuals, c=self.p_host[1], cmap = 'bwr', marker ='o', s = 20,linewidth=1)
-            plt.errorbar(self.host_prop[1], self.residuals, linestyle='',
-			            yerr=np.sqrt(self.var),
-                        xerr = [self.host_prop_err_minus[1], self.host_prop_err_sup[1]],
-			            ecolor='grey', 
-			            alpha=0.4, marker='.', 
-			            zorder=0)
-            plt.title('Hubble diagram residuals as a function of local specific star formation rate')
-            plt.grid()
-            plt.xlabel('Local sSFR', fontsize = 12)
-            plt.ylabel('$\Delta \mu$', fontsize = 12)  
-            cb = plt.colorbar()
-            cb.set_label('Probability of having this local sSFR')
-            plt.show()
+            #plt.scatter(self.host_prop[1], self.residuals, c=self.p_host[1], cmap = 'bwr', marker ='o', s = 20,linewidth=1)
+            #plt.errorbar(self.host_prop[1], self.residuals, linestyle='',
+			#            yerr=np.sqrt(self.var),
+            #            xerr = [self.host_prop_err_minus[1], self.host_prop_err_sup[1]],
+			#            ecolor='grey', 
+			#            alpha=0.4, marker='.', 
+			#            zorder=0)
+            #plt.title('Hubble diagram residuals as a function of local specific star formation rate')
+            #plt.grid()
+            #plt.xlabel('Local sSFR', fontsize = 12)
+            #plt.ylabel('$\Delta \mu$', fontsize = 12)  
+            #cb = plt.colorbar()
+            #cb.set_label('Probability of having this local sSFR')
+            #plt.show()
 
         
     
 if __name__ == "__main__":
     file_host = '../snfactory/lssfr_paper_full_sntable.csv'
     
-    #mb, params, cov ,zcmb, dmz, host_prop, p_host, host_prop_err_down, host_prop_err_up= load_salt2('../snfactory/data_complete/sugar_companion_dataset.pkl', file_host)
-    #hd = hubble_diagram(mb, params, cov ,zcmb, dmz, host_prop, p_host, host_prop_err_down, host_prop_err_up)
-    #hd.plot_results(['X1', 'X', 'Probability of having this mass'])
+    mb, params, cov ,zcmb, dmz, host_prop, p_host, host_prop_err_down, host_prop_err_up= load_salt2('../snfactory/data_complete/sugar_companion_dataset.pkl', file_host)
+    hd = hubble_diagram(mb, params, cov ,zcmb, dmz, host_prop, p_host, host_prop_err_down, host_prop_err_up)
+   # hd = hubble_diagram(mb, params, cov ,zcmb, dmz, None, None, None, None)
+    #print(hd.comp_chi2([-0.15, 3.8, -0.12, -19.2])/len(mb))
+    hd.minimize()
+    #hd.plot_results(['X1', 'C', 'Probability of having this mass'])
 
     #mb, params, cov ,zcmb, dmz, host_prop, p_host, host_prop_err_down, host_prop_err_up= load_sugar_data()
     #hd = hubble_diagram(mb, params, cov ,zcmb, dmz, host_prop, p_host, host_prop_err_down, host_prop_err_up)
+    #hd.minimize()
     #hd.plot_results(['q1', 'q2','q3', 'Av'])
 
 
-    z, mb, data, data_cov, mass, proba = generate_mc_data(N=10000, Mb=-19.2, alphas=[-0.15, 3.8], stds=[1., 0.1],
-                                                          mb_err=0.03, stds_err = [0.05, 0.01], step=0.12)
-    print(mb)    
-    dmz=np.zeros(len(mb))
-    hd = hubble_diagram(mb, data, data_cov ,z, dmz)
-    hd.plot_results(['q1', 'q2'])
+    #z, mb, data, data_cov, mass, proba = generate_mc_data(N=1000, Mb=-19.2, alphas=[-0.15, 3.8], stds=[1., 0.1],
+    #                                                       mb_err=0.03, stds_err = [0.05, 0.01], step=0.12)
+    
+        
+    #dmz=np.zeros(len(mb))
+    #hd = hubble_diagram(mb, data, data_cov ,z, dmz, mass, proba)
+    #hd.minimize()
+    #hd.plot_results(['X1','C','proba'])
 
 
 
