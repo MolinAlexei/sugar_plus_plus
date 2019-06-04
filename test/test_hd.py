@@ -1,15 +1,13 @@
 import numpy as np
-import pylab as plt
-import copy
-from toolbox import distance_modulus
-from scipy import optimize
+import sugar_plus_plus as spp
+from spp_test_helper import timer
 
 def generate_mc_data(N=10000, Mb=-19.2, alphas=[-0.15, 3.8], stds=[1., 0.1],
                      mb_err=0.03, stds_err = [0.05, 0.01], step=0.12):
 
     np.random.seed(13)
     z = np.random.uniform(0.01, 0.1, size = N)
-    mu = distance_modulus(z)
+    mu = spp.distance_modulus(z)
     mb = mu + Mb
     data = np.zeros((N, len(alphas)))
     data_cov = np.zeros((N, len(alphas)+1, len(alphas)+1))
@@ -32,47 +30,26 @@ def generate_mc_data(N=10000, Mb=-19.2, alphas=[-0.15, 3.8], stds=[1., 0.1],
         proba = np.zeros(N)
         proba[filter_higth_mass] = 1.
         mb += proba * step
-        return z, mb, data, data_cov, mass, proba
+        truth_theta = [alpha for alpha in alphas]
+        truth_theta.append(step)
+        truth_theta.append(Mb)
+        return z, mb, data, data_cov, mass, proba, np.array(truth_theta)
 
+@timer
+def test_hubble_diagram():
 
-def comp_chi2(mb, zcmb, data, data_cov, proba, theta):
+    z, mb, data, data_cov, mass, proba, truth_theta = generate_mc_data(N=3000, Mb=-19.2,
+                                                                       alphas=[-0.15, 3.8],
+                                                                       stds=[1, 0.1],
+                                                                       mb_err=0.03,
+                                                                       stds_err = [0.05, 0.01],
+                                                                       step=0.08)
+    dmz = np.zeros(len(mb))
+    hd = spp.hubble_diagram(mb, data, data_cov ,z, dmz=dmz, host_prop=mass, p_host=proba)
+    hd.minimize()
 
-        residuals = copy.deepcopy(mb) - distance_modulus(zcmb)
-        
-        for i in range(len(data[0])):            
-            residuals -= data[:,i] * theta[i]
-        
-        if proba is not None:           
-           residuals -= proba* theta[-2]
-           
-
-        residuals -= theta[-1]
-
-        var = np.zeros_like(mb)
-
-        vec_theta = [1.]
-        for i in range(len(data[0])):
-            vec_theta.append(theta[i])
-        vec_theta = np.array(vec_theta)
-        for sn in range(len(mb)):
-            
-            var[sn] = np.dot(np.dot(vec_theta, data_cov[sn]), vec_theta.reshape((len(vec_theta),1)))
-
-        chi2 = np.sum(residuals**2 / var)
-
-        return chi2
-
-
-
-
+    np.testing.assert_allclose(hd.theta, truth_theta, atol=1e-2)
 
 if __name__ == "__main__":
 
-    z, mb, data, data_cov, mass, proba = generate_mc_data(N=1000, Mb=-19.2, alphas=[-0.15, 3.8], stds=[1, 0.1],
-                                             mb_err=0.03, stds_err = [0.05, 0.01], step=0)
-
-    
-    theta = [-0.15, 3.8, 0.12, -19.2]
-    print(comp_chi2(mb, z, data, data_cov, None, theta))
-
-    
+    test_hubble_diagram()
