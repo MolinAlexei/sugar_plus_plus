@@ -19,7 +19,7 @@ class hubble_diagram(object):
         self.zcmb = zcmb
 
         if dmz is None:
-            dmz = np.zeros_like(self.mb)
+            self.dmz = np.zeros_like(self.mb)
         else:
             self.dmz = dmz
 
@@ -214,35 +214,29 @@ class hubble_diagram(object):
         
     
 if __name__ == "__main__":
-    file_host = '../snfactory/lssfr_paper_full_sntable.csv'
-    
-    mb, params, cov ,zcmb, dmz, host_prop, p_host, host_prop_err_down, host_prop_err_up= load_salt2('../snfactory/data_complete/sugar_companion_dataset.pkl', file_host)
-    hd = hubble_diagram(mb, params, cov ,zcmb, dmz, host_prop, p_host, host_prop_err_down, host_prop_err_up)
-   # hd = hubble_diagram(mb, params, cov ,zcmb, dmz, None, None, None, None)
-    #print(hd.comp_chi2([-0.15, 3.8, -0.12, -19.2])/len(mb))
-    hd.minimize()
-    #hd.plot_results(['X1', 'C', 'Probability of having this mass'])
 
-    #mb, params, cov ,zcmb, dmz, host_prop, p_host, host_prop_err_down, host_prop_err_up= load_sugar_data()
-    #hd = hubble_diagram(mb, params, cov ,zcmb, dmz, host_prop, p_host, host_prop_err_down, host_prop_err_up)
-    #hd.minimize()
-    #hd.plot_results(['q1', 'q2','q3', 'Av'])
+    file_host = '../../../../lssfr_paper_full_sntable.csv'
+    file_salt2 = '../../../../../sands_companion_dataset/sugar_companion_dataset.pkl'
+    file_sugar = '../../../../../sugar_analysis/sugar_analysis/meta_sugar.yaml'
 
+    KEY = 0
 
-    #z, mb, data, data_cov, mass, proba = generate_mc_data(N=1000, Mb=-19.2, alphas=[-0.15, 3.8], stds=[1., 0.1],
-    #                                                       mb_err=0.03, stds_err = [0.05, 0.01], step=0.12)
-    
-        
-    #dmz=np.zeros(len(mb))
-    #hd = hubble_diagram(mb, data, data_cov ,z, dmz, mass, proba)
-    #hd.minimize()
-    #hd.plot_results(['X1','C','proba'])
+    mb, params, cov ,zcmb, dmz, host_prop, p_host, host_prop_err_down, host_prop_err_up= spp.load_salt2(file_salt2, file_host)
 
+    hd_salt2 = hubble_diagram(mb, params, cov ,zcmb, dmz=None,
+                              host_prop=host_prop[KEY], p_host=p_host[KEY],
+                              host_prop_err_minus=host_prop_err_down[KEY],
+                              host_prop_err_sup=host_prop_err_up[KEY])
 
+    #hd_salt2 = hubble_diagram(mb, params, cov , zcmb, dmz=None,
+    #                          host_prop=None, p_host=None,
+    #                          host_prop_err_minus=None, host_prop_err_sup=None)
+    hd_salt2.minimize()
+    #hd_salt2.plot_results(['X1', 'C', 'Probability of having this mass'])
 
-
-
-
-
-    
-
+    # mb, params, cov ,zcmb, dmz, host_prop, p_host, host_prop_err_down, host_prop_err_up= spp.load_sugar_data(sn_data=file_sugar, global_mass=file_host)
+    # hd_sugar = hubble_diagram(mb, params, cov ,zcmb, dmz,
+    #                           host_prop[KEY], p_host[KEY],
+    #                          host_prop_err_down[KEY], host_prop_err_up[KEY])
+    # hd_sugar.minimize()
+    # hd_sugar.plot_results(['q1', 'q2','q3', 'Av'])
