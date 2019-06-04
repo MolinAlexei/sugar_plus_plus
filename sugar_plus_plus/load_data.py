@@ -5,11 +5,10 @@ import yaml
 
 def load_salt2(File, File_host):
 
-    # table_host = np.loadtxt(File_host, comments='#', delimiter=',', dtype='str',skiprows=1)
-    # sn_name_host =  table_host[:,16]
+    table_host = np.loadtxt(File_host, comments='#', delimiter=',', dtype='str',skiprows=1)
+    sn_name_host =  table_host[:,16]
     
     dic = pickle.load(open(File))
-    sn_name_host = dic.keys()
     sn_name_dic = dic.keys()
 
     sn_name = []
@@ -49,18 +48,18 @@ def load_salt2(File, File_host):
     p_hightmass = np.zeros_like(X1)
     p_prompt = np.zeros_like(X1)
 
-    #count=0
-    #for k,sn in enumerate(sn_name_host):
-    #    if sn in sn_name :
-    #        global_mass[count] = table_host[k,4].astype(float)
-    #        gmass_err_down[count] = table_host[k,5].astype(float)
-    #        gmass_err_up[count] = table_host[k,6].astype(float)
-    #        lssfr[count] = table_host[k,10].astype(float)
-    #        lssfr_err_down[count] = table_host[k,11].astype(float)
-    #        lssfr_err_up[count] = table_host[k,12].astype(float)
-    #        p_hightmass[count] = table_host[k,17].astype(float)
-    #        p_prompt[count] = table_host[k,18].astype(float)
-    #        count += 1
+
+    for k, sn in enumerate(sn_name):
+        for j, snh  in enumerate(sn_name_host):
+            if sn == snh :
+                global_mass[k] = table_host[j,4].astype(float)
+                gmass_err_down[k] = table_host[j,5].astype(float)
+                gmass_err_up[k] = table_host[j,6].astype(float)
+                lssfr[k] = table_host[j,10].astype(float)
+                lssfr_err_down[k] = table_host[j,11].astype(float)
+                lssfr_err_up[k] = table_host[j,12].astype(float)
+                p_hightmass[k] = table_host[j,17].astype(float)
+                p_prompt[k] = table_host[j,18].astype(float)
 
     params = np.array([X1, C]).T
 
