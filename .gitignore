@@ -3,6 +3,14 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+*.py~
+*.pyc
+
+sugar_plus_plus/*.py~
+sugar_plus_plus/*.pyc
+
+.gitignore~
+
 # C extensions
 *.so
 

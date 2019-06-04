@@ -6,8 +6,7 @@ import os
 import pickle
 from mpl_toolkits.mplot3d import Axes3D
 from scipy import optimize
-from toolbox import distance_modulus
-from toolbox import weighted_avg_and_std
+import sugar_plus_plus as spp
 import yaml
 
 from test_hd import generate_mc_data
@@ -178,7 +177,7 @@ class hubble_diagram(object):
     
     def comp_chi2(self, theta, sigma_int):
 
-        residuals = copy.deepcopy(self.mb) - distance_modulus(self.zcmb)
+        residuals = copy.deepcopy(self.mb) - spp.distance_modulus(self.zcmb)
         
         for i in range(len(self.data[0])):            
             residuals -= self.data[:,i] * theta[i]
@@ -256,7 +255,7 @@ class hubble_diagram(object):
         for k in range(len(self.data[0])):            
             mu_ajuste -= self.theta[k]*self.data[:,k]
             
-            mb_reduit_k = copy.deepcopy(self.mb) - distance_modulus(self.zcmb)
+            mb_reduit_k = copy.deepcopy(self.mb) - spp.distance_modulus(self.zcmb)
             mb_reduit_k -= self.theta[-2]*self.p_host[0]
             
             for i in range(len(self.data[0])):
@@ -316,7 +315,7 @@ class hubble_diagram(object):
               #  plt.show()
 
         z_span = np.linspace(1E-2,0.15,100)
-        mu_th = distance_modulus(z_span)
+        mu_th = spp.distance_modulus(z_span)
 
 
     
@@ -341,7 +340,7 @@ class hubble_diagram(object):
 
 
         plt.subplot(gs[1])
-        weighted_std = weighted_avg_and_std(self.residuals, np.sqrt(self.var))
+        weighted_std = spp.weighted_avg_and_std(self.residuals, np.sqrt(self.var))
         plt.scatter(self.zcmb, self.residuals, 
                     marker ='+', s = 20, 
                     linewidth=1, color = 'b', label = 'wRMS = %.3f mag'%(weighted_std))
