@@ -81,9 +81,9 @@ class hubble_diagram(object):
         count = 0  
         
         while c > 1e-2:
-
-            self.sigma_int = optimize.fsolve(self.chi2_dof, 0)
-            self.theta = optimize.fmin(self.comp_chi2, p0)
+            results = optimize.fsolve(self.chi2_dof, 0.1)
+            self.sigma_int = results[0]
+            self.theta = optimize.fmin(self.comp_chi2, self.theta)
             c = self.chi2_dof(self.sigma_int)
             count += 1
             if count > 10:
