@@ -37,9 +37,9 @@ class hubble_diagram(object):
         self.sigma_int = 0.0
         self.distance_modulus = spp.distance_modulus(self.zcmb)
 
-    def comp_chi2(self, theta):
+    def comp_chi2(self, theta, sigma_int=0.):
 
-        residuals = copy.deepcopy(self.mb) - self.distance_modulus
+        residuals = copy.deepcopy(self.mb)# - self.distance_modulus
 
         for i in range(len(self.data[0])):
             residuals -= self.data[:,i] * theta[i]
@@ -57,7 +57,7 @@ class hubble_diagram(object):
         vec_theta = np.array(vec_theta)
 
         for sn in range(self.nsn):            
-            var[sn] = vec_theta.dot(self.cov[sn].dot(vec_theta.reshape((len(vec_theta),1)))) + self.sigma_int**2 + self.dmz[sn]**2 
+            var[sn] = vec_theta.dot(self.cov[sn].dot(vec_theta.reshape((len(vec_theta),1)))) + sigma_int**2 + self.dmz[sn]**2 
 
         self.residuals = residuals
         self.var = var
@@ -66,36 +66,78 @@ class hubble_diagram(object):
         return self.chi2
 
     def chi2_dof(self, sigma_int):
-        self.sigma_int = sigma_int
-        chi2 = self.comp_chi2(self.theta)
-        return (chi2/self.dof) - 1             
+        chi2 = self.comp_chi2(self.theta, sigma_int=sigma_int)
+        return (chi2/self.dof) - 1
 
     def minimize(self):
         # first round for minimizing
         p0 = np.zeros(self.ntheta)
-        p0[-1] = -19.2
+        p0[-1] = 0
         
-        self.theta = optimize.fmin(self.comp_chi2, p0)
+        self.theta = optimize.fmin(self.comp_chi2, p0, args=(self.sigma_int,))
         c = self.chi2_dof(self.sigma_int)
         print('premier c', c) 
         count = 0  
         
-        while c > 1e-2:
+        while c > 1e-3:
+            print('DEBUG: I am doing some plots')
+            # TO DO: I need to check if I am finding the good solutions
+            siig = np.linspace(0, 0.8, 100)
+            reduced_chi2 = np.array([self.chi2_dof(sig) for sig in siig])
+            plt.figure()
+            plt.plot(siig, reduced_chi2, 'b', lw=3)
+            plt.plot(siig, np.zeros_like(siig), 'k')
             results = optimize.fsolve(self.chi2_dof, 0.1)
+            ylim = plt.ylim()
+            plt.plot([results[0], results[0]], ylim, 'r', lw=3)
+            plt.ylim(ylim[0], ylim[1])
+            plt.show()
             self.sigma_int = results[0]
-            self.theta = optimize.fmin(self.comp_chi2, self.theta)
+            self.theta = optimize.fmin(self.comp_chi2, self.theta, args=(self.sigma_int,))
             c = self.chi2_dof(self.sigma_int)
             count += 1
-            if count > 10:
+            if count > 4:
                 break
 
-        print(c)        
+        print(c)
         print(self.sigma_int)
         print(self.theta)
 
+    def plot_debug(self):
+
+        for i in range(len(self.data[0])):
+            residuals = copy.deepcopy(self.residuals)
+            for j in range(len(self.data[0])):
+                if i==j:
+                    residuals += self.data[:,j] * self.theta[j]
+            plt.figure()
+            plt.scatter(self.data[:, i], residuals, c='b')
+            plt.errorbar(self.data[:,i], residuals, linestyle='',
+                         yerr=np.sqrt(self.var), 
+                         xerr=np.sqrt(self.cov[:,i+1,i+1]),
+                         ecolor='blue',
+                         alpha=0.4, marker='.',
+                         zorder=0)
+            x = np.linspace(np.min(self.data[:, i]), np.max(self.data[:, i]), 10)
+            plt.plot(x, x*self.theta[i], 'r', lw=3)
+
+        if self.p_host is not None:
+            residuals = copy.deepcopy(self.residuals)
+            residuals += self.p_host * self.theta[-2]
+            plt.figure()
+            plt.scatter(self.p_host, residuals, c=self.host_prop, cmap=plt.cm.seismic)
+            plt.errorbar(self.p_host, residuals, linestyle='',
+                         yerr=np.sqrt(self.var),
+                         xerr=None, 
+                         ecolor='blue',
+                         alpha=0.4, marker='.',
+                         zorder=0)
+            x = np.linspace(np.min(self.p_host), np.max(self.p_host), 10)
+            plt.plot(x, x*self.theta[-2], 'r', lw=3)
+            plt.colorbar()
+
     def plot_results(self, param_name):
 
-        self.minimize()
         mu = copy.deepcopy(self.mb)
         mu += - self.theta[-1]
         mu_ajuste = copy.deepcopy(mu)
@@ -221,9 +263,9 @@ if __name__ == "__main__":
 
     KEY = 0
 
-    mb, params, cov ,zcmb, dmz, host_prop, p_host, host_prop_err_down, host_prop_err_up= spp.load_salt2(file_salt2, file_host)
+    mb, params, cov ,zcmb, z_err, dmz, host_prop, p_host, host_prop_err_down, host_prop_err_up= spp.load_salt2(file_salt2, file_host)
 
-    hd_salt2 = hubble_diagram(mb, params, cov ,zcmb, dmz=None,
+    hd_salt2 = hubble_diagram(mb, params, cov ,zcmb, dmz=dmz,
                               host_prop=host_prop[KEY], p_host=p_host[KEY],
                               host_prop_err_minus=host_prop_err_down[KEY],
                               host_prop_err_sup=host_prop_err_up[KEY])
@@ -232,6 +274,7 @@ if __name__ == "__main__":
     #                          host_prop=None, p_host=None,
     #                          host_prop_err_minus=None, host_prop_err_sup=None)
     hd_salt2.minimize()
+    hd_salt2.plot_debug()
     #hd_salt2.plot_results(['X1', 'C', 'Probability of having this mass'])
 
     # mb, params, cov ,zcmb, dmz, host_prop, p_host, host_prop_err_down, host_prop_err_up= spp.load_sugar_data(sn_data=file_sugar, global_mass=file_host)
