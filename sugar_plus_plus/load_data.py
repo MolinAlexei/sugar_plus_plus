@@ -66,11 +66,11 @@ def load_salt2_old(File, File_host):
     sn_name_dic = dic.keys()
 
     sn_name = []
-
+    
     for sn in sn_name_host:
         if sn in sn_name_dic:
             sn_name.append(sn)
-
+    
 
     X1 = np.array([dic[sn]['salt2_info']['X1'] for sn in sn_name])
     C = np.array([dic[sn]['salt2_info']['C'] for sn in sn_name])
@@ -121,7 +121,7 @@ def load_salt2_old(File, File_host):
     p_host = [p_hightmass, p_prompt]
     host_prop_err_down = [gmass_err_down, lssfr_err_down]
     host_prop_err_up = [gmass_err_up, lssfr_err_up]
-
+    
     return mb, params, cov ,zcmb, dmz, host_prop, p_host, host_prop_err_down, host_prop_err_up
 
 def load_sugar_data(sn_data='meta_sugar.yaml',
@@ -139,7 +139,7 @@ def load_sugar_data(sn_data='meta_sugar.yaml',
     P_highmass = host[:,17].astype(float)
     P_prompt = host[:,18].astype(float) # (1 - p_delayed I guess)                                                                                                        
 
-    dic = yaml.load(open(sn_data))
+    dic = yaml.load(open(sn_data), Loader = yaml.Loader)
     sn_name = dic['sn_name']
     z = dic['z_cmb']
     Filtre = np.array([True]*len(sn_name))
@@ -192,3 +192,14 @@ def load_sugar_data(sn_data='meta_sugar.yaml',
     host_prop_err_up = [Mass_err_up, LSSFR_err_up]
 
     return mb.T, data, data_cov, zcmb, zd_err, host_prop, p_host, host_prop_err_down, host_prop_err_up
+
+if __name__ == "__main__":
+
+    file_host = '../../Data/lssfr_paper_full_sntable.csv'
+    file_salt2 = '../../Data/sugar_companion_dataset.pkl'
+    file_sugar = '../../Data/meta_sugar.yaml'
+
+    KEY = 0
+
+    mb, params, cov ,zcmb, dmz, host_prop, p_host, host_prop_err_down, host_prop_err_up= load_sugar_data(file_sugar, file_host)
+    print(mb)

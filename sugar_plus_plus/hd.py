@@ -77,7 +77,7 @@ class hubble_diagram(object):
         self.theta = optimize.fmin(self.comp_chi2, p0, args=(self.sigma_int,))
         c = self.chi2_dof(self.sigma_int)
         print('premier c', c) 
-        count = 0  
+        count = 0 
         
         while c > 1e-3:
             print('DEBUG: I am doing some plots')
@@ -136,7 +136,11 @@ class hubble_diagram(object):
             plt.plot(x, x*self.theta[-2], 'r', lw=3)
             plt.colorbar()
 
-    def plot_results(self, param_name):
+
+    def plot_results(self, param_name, host_param_name):
+
+        if self.p_host is not None : 
+            param_name.append('Probability of %s'%(host_param_name))
 
         mu = copy.deepcopy(self.mb)
         mu += - self.theta[-1]
@@ -173,12 +177,12 @@ class hubble_diagram(object):
             
             if self.p_host is not None:
                 plt.scatter(self.host_prop, self.data[:,k], c=self.p_host, cmap = 'bwr', marker ='o', s = 20,linewidth=1) 
-                plt.title('Parameter %s as a function of host galaxy mass'%(param_name[k]))
+                plt.title('Parameter %s as a function of host galaxy %s'%(param_name[k], host_param_name))
                 plt.grid()
                 plt.xlabel('$\log_{10} \\frac{M_{galaxy}}{M_{\odot}}$', fontsize=12)
                 plt.ylabel('Parameter %s'%(param_name[k]), fontsize = 12)
                 cb = plt.colorbar()
-                cb.set_label('Probability of having this mass')
+                cb.set_label(param_name[-1])
                 plt.show()
 
         z_span = np.linspace(1E-2,0.15,100)
@@ -257,11 +261,12 @@ class hubble_diagram(object):
     
 if __name__ == "__main__":
 
-    file_host = '../../../../lssfr_paper_full_sntable.csv'
-    file_salt2 = '../../../../../sands_companion_dataset/sugar_companion_dataset.pkl'
-    file_sugar = '../../../../../sugar_analysis/sugar_analysis/meta_sugar.yaml'
+    file_host = '../../Data/lssfr_paper_full_sntable.csv'
+    file_salt2 = '../../Data/sugar_companion_dataset.pkl'
+    file_sugar = '../../Data/meta_sugar.yaml'
 
     KEY = 0
+    host_param_names = ['mass', 'lsSFR']
 
     mb, params, cov ,zcmb, z_err, dmz, host_prop, p_host, host_prop_err_down, host_prop_err_up= spp.load_salt2(file_salt2, file_host)
 
@@ -270,10 +275,6 @@ if __name__ == "__main__":
                               host_prop_err_minus=host_prop_err_down[KEY],
                               host_prop_err_sup=host_prop_err_up[KEY])
 
-    #hd_salt2 = hubble_diagram(mb, params, cov , zcmb, dmz=None,
-    #                          host_prop=None, p_host=None,
-    #                          host_prop_err_minus=None, host_prop_err_sup=None)
-    hd_salt2.minimize()
     hd_salt2.plot_debug()
     #hd_salt2.plot_results(['X1', 'C', 'Probability of having this mass'])
 
@@ -282,4 +283,4 @@ if __name__ == "__main__":
     #                           host_prop[KEY], p_host[KEY],
     #                          host_prop_err_down[KEY], host_prop_err_up[KEY])
     # hd_sugar.minimize()
-    # hd_sugar.plot_results(['q1', 'q2','q3', 'Av'])
+
