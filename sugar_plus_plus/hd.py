@@ -80,18 +80,10 @@ class hubble_diagram(object):
         count = 0 
         
         while c > 1e-3:
-            print('DEBUG: I am doing some plots')
             # TO DO: I need to check if I am finding the good solutions
             siig = np.linspace(0, 0.8, 100)
             reduced_chi2 = np.array([self.chi2_dof(sig) for sig in siig])
-            plt.figure()
-            plt.plot(siig, reduced_chi2, 'b', lw=3)
-            plt.plot(siig, np.zeros_like(siig), 'k')
             results = optimize.fsolve(self.chi2_dof, 0.1)
-            ylim = plt.ylim()
-            plt.plot([results[0], results[0]], ylim, 'r', lw=3)
-            plt.ylim(ylim[0], ylim[1])
-            plt.show()
             self.sigma_int = results[0]
             self.theta = optimize.fmin(self.comp_chi2, self.theta, args=(self.sigma_int,))
             c = self.chi2_dof(self.sigma_int)

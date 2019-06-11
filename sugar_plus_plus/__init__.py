@@ -11,6 +11,7 @@ from .cosmo_tools import distance_modulus_th
 from .math_toolbox import comp_rms
 
 from .hd import hubble_diagram
+from .Hubble_fit import get_hubblefit
 
 from .load_data import load_salt2
 from .load_data import load_sugar_data

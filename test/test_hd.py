@@ -57,6 +57,43 @@ def test_hubble_diagram():
     np.testing.assert_allclose(hd.theta, truth_theta, atol=5e-2)
     np.testing.assert_allclose(hd.sigma_int, truth_disp_int, atol=5e-2)
 
+
+@timer
+def test_get_hubblefit():
+
+    z, dmz, mb, params, cov, mass, proba, truth_theta, truth_disp_int = generate_mc_data(N=300, Mb=-19.2,
+                                                                                         alphas=[-0.15, 3.8],
+                                                                                         stds=[1, 0.1],
+                                                                                         mb_err=0.03,
+                                                                                         stds_err = [0.05, 0.01],
+                                                                                         step=0.08,
+                                                                                         disp_int=0.1,
+                                                                                         dz = 0.001)
+    data = np.zeros((len(params[:,0]), len(params[0])+2))
+    data[:,0] = mb
+    for i in range(len(params[0])):
+      data[:,i+1] = params[:,i]
+    data[:,-1] = proba
+
+    COV = np.zeros((4*len(mb), 4*len(mb)))
+    for sn in range(len(mb)):
+        COV[sn*4:((sn+1)*4)-1, sn*4:((sn+1)*4)-1] = cov[sn]
+
+    hf = spp.get_hubblefit(data, COV, z, z, dmz,
+                           PARAM_NAME=np.asarray(['alpha', 'beta', 'step_lsSFR']),
+                           lssfr=np.array([mass, proba]).T, sn_name=None)
+    hf.fit(Mb_guess = -19.2)
+
+    fitted_theta = np.zeros_like(truth_theta)
+    fitted_theta[-1] = hf.resultsfit[0]
+    for i in range(len(truth_theta)-1):
+        fitted_theta[i] = hf.resultsfit[i+1]
+
+    np.testing.assert_allclose(abs(fitted_theta), abs(truth_theta), atol=7e-2)
+    np.testing.assert_allclose(hf.sig_int, truth_disp_int, atol=7e-2)
+
+
 if __name__ == "__main__":
 
-    test_hubble_diagram()
+    #test_hubble_diagram()
+    test_get_hubblefit()

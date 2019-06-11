@@ -32,7 +32,7 @@ def make_method(obj):
     return decorate
 
 
-def get_hubblefit(x, cov_x, zhl, zcmb, zerr, PARAM_NAME=np.asarray(['alpha1','alpha2',"alpha3","beta","delta", "delta2", "delta3"]), lssfr=None, sn_name=None):
+def get_hubblefit(x, cov_x, zhl, zcmb, dmz, PARAM_NAME=np.asarray(['alpha1','alpha2',"alpha3","beta","delta", "delta2", "delta3"]), lssfr=None, sn_name=None):
     """
     Parameters
     ----------
@@ -53,7 +53,7 @@ def get_hubblefit(x, cov_x, zhl, zcmb, zerr, PARAM_NAME=np.asarray(['alpha1','al
     n_corr =  np.shape(x)[1]-1 
     class hubble_fit_case(Hubble_fit):
         freeparameters = ["Mb"]+PARAM_NAME[:n_corr].tolist()
-    h = hubble_fit_case(x, cov_x, zhl, zcmb, zerr, lssfr=lssfr, sn_name=sn_name)
+    h = hubble_fit_case(x, cov_x, zhl, zcmb, dmz, lssfr=lssfr, sn_name=sn_name)
     return h
 
 
@@ -75,13 +75,13 @@ class Hubble_fit(object):
 
         return obj
 
-    def __init__(self, X, cov_X, zhl, zcmb, zerr,  guess=None, lssfr=None, sn_name=None):
+    def __init__(self, X, cov_X, zhl, zcmb, dmz,  guess=None, lssfr=None, sn_name=None):
         self.variable = X
         self.cov = cov_X
         self.zcmb = zcmb
         self.zhl = zhl
-        self.zerr = zerr
-        self.dmz = 5/np.log(10) * np.sqrt(self.zerr**2 + 0.001**2) / self.zcmb #adding peculiar velocity
+        #self.zerr = zerr
+        self.dmz = dmz #5/np.log(10) * np.sqrt(self.zerr**2 + 0.001**2) / self.zcmb #adding peculiar velocity
         self.sn_name = sn_name
         self.dof = len(X)-len(self.freeparameters)  
 
@@ -114,7 +114,7 @@ class Hubble_fit(object):
         self.Cmu[np.diag_indices_from(self.Cmu)] += self.sig_int**2 + self.dmz**2 
         self.C = inv(self.Cmu)
         self.distance_modulus_table =  self.distance_modulus(params)
-        L = self.distance_modulus_table #- distance_modulus_th(self.zcmb, self.zhl)
+        L = self.distance_modulus_table - distance_modulus_th(self.zcmb, self.zhl)
         self.residuals = L
         self.var = np.diag(self.Cmu)
         the_chi2 = np.dot(L, np.dot(self.C,L))
@@ -332,23 +332,41 @@ if __name__ == "__main__":
    file_salt2 = '../../../../../sands_companion_dataset/sugar_companion_dataset.pkl'
    file_sugar = '../../../../../sugar_analysis/sugar_analysis/meta_sugar.yaml'
 
+   #### SALT2 fit ####
 
-   mb, params, cov, zcmb, z_err, dmz, host_prop, p_host, host_prop_err_down, host_prop_err_up = spp.load_salt2(file_salt2, file_host)
+   mb, params, cov, zcmb, dmz, host_prop, p_host, host_prop_err_down, host_prop_err_up = spp.load_salt2(file_salt2, file_host)
    
    data = np.zeros((len(params[:,0]), len(params[0])+2))
    data[:,0] = mb
    for i in range(len(params[0])):
       data[:,i+1] = params[:,i]
    data[:,-1] = 1-p_host[1]
-
+   
    COV = np.zeros((4*len(mb), 4*len(mb)))
    for sn in range(len(mb)):
       COV[sn*4:((sn+1)*4)-1, sn*4:((sn+1)*4)-1] = cov[sn]
-
-   hf = get_hubblefit(data, COV, zcmb, zcmb, z_err, 
-                      PARAM_NAME=np.asarray(['alpha', 'beta', 'step_lsSFR']), 
-                      lssfr=np.array([host_prop[1], p_host[1]]).T, sn_name=None)
-   hf.fit(Mb_guess = 0)
-
-
    
+   hf_salt2 = get_hubblefit(data, COV, zcmb, zcmb, dmz, 
+                            PARAM_NAME=np.asarray(['alpha', 'beta', 'step_lsSFR']), 
+                            lssfr=np.array([host_prop[1], p_host[1]]).T, sn_name=None)
+   hf_salt2.fit(Mb_guess = -19.2)
+
+   #### SUGAR fit ###
+
+   mb, params, cov, zcmb, dmz, host_prop, p_host, host_prop_err_down, host_prop_err_up = spp.load_sugar_data(file_sugar,
+                                                                                                             file_host)
+   
+   data = np.zeros((len(params[:,0]), len(params[0])+2))
+   data[:,0] = mb
+   for i in range(len(params[0])):
+      data[:,i+1] = params[:,i]
+   data[:,-1] = 1-p_host[1]
+   
+   COV = np.zeros((6*len(mb), 6*len(mb)))
+   for sn in range(len(mb)):
+      COV[sn*6:((sn+1)*6)-1, sn*6:((sn+1)*6)-1] = cov[sn]
+   
+   hf_sugar = get_hubblefit(data, COV, zcmb, zcmb, dmz, 
+                      PARAM_NAME=np.asarray(['a1', 'a2', 'a3', 'b', 'step_lsSFR']), 
+                      lssfr=np.array([host_prop[1], p_host[1]]).T, sn_name=None)
+   hf_sugar.fit(Mb_guess = -19.2)
